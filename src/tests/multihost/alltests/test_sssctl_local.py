@@ -6,6 +6,7 @@
 :upstream: yes
 :status: approved
 """
+
 from __future__ import print_function
 import pytest
 from sssd.testlib.common.utils import sssdTools
@@ -17,17 +18,18 @@ def client_version(multihost):
         return True
 
 
-@pytest.mark.usefixtures('default_sssd')
+@pytest.mark.usefixtures("default_sssd")
 @pytest.mark.sssctl
 class Testsssctl(object):
     """
     This is test case class for sssctl suite
     """
-    @pytest.mark.converted('test_sssctl.py', 'test_sssctl__user_show_cache_expiration_time')
+
+    @pytest.mark.converted(
+        "test_tools.py", "test_sssctl__user_show_cache_expiration_time"
+    )
     @pytest.mark.tier1_2
-    def test_0001_bz1640576(self, multihost,
-                            backupsssdconf,
-                            localusers):
+    def test_0001_bz1640576(self, multihost, backupsssdconf, localusers):
         """
         :title: IDM-SSSD-TC: sssctl: sssctl reports incorrect
          information about local user's cache entry expiration time
@@ -37,27 +39,22 @@ class Testsssctl(object):
             pytest.skip("Files Provider support isn't available, skipping")
         users = localusers
         tools = sssdTools(multihost.client[0])
-        multihost.client[0].service_sssd('stop')
-        tools.remove_sss_cache('/var/lib/sss/db')
-        tools.remove_sss_cache('/var/log/sssd')
-        sssd_param = {'domains': 'local'}
-        tools.sssd_conf('sssd', sssd_param)
-        param = {'id_provider': 'files',
-                 'passwd_files': '/etc/passwd'}
-        tools.sssd_conf('domain/local', param)
-        multihost.client[0].service_sssd('start')
+        multihost.client[0].service_sssd("stop")
+        tools.remove_sss_cache("/var/lib/sss/db")
+        tools.remove_sss_cache("/var/log/sssd")
+        sssd_param = {"domains": "local"}
+        tools.sssd_conf("sssd", sssd_param)
+        param = {"id_provider": "files", "passwd_files": "/etc/passwd"}
+        tools.sssd_conf("domain/local", param)
+        multihost.client[0].service_sssd("start")
         for user in users.keys():
-            sssctl_cmd = 'sssctl user-show %s' % user
-            cmd = multihost.client[0].run_command(sssctl_cmd,
-                                                  raiseonerr=False)
-            assert 'Cache entry expiration time: Never'\
-                   in cmd.stdout_text
+            sssctl_cmd = "sssctl user-show %s" % user
+            cmd = multihost.client[0].run_command(sssctl_cmd, raiseonerr=False)
+            assert "Cache entry expiration time: Never" in cmd.stdout_text
 
-    @pytest.mark.converted('test_sssctl.py', 'test_sssctl__handle_implicit_domain')
+    @pytest.mark.converted("test_sssctl.py", "test_sssctl__handle_implicit_domain")
     @pytest.mark.tier1_2
-    def test_0002_bz1599207(self, multihost,
-                            backupsssdconf,
-                            localusers):
+    def test_0002_bz1599207(self, multihost, backupsssdconf, localusers):
         """
         :title: IDM-SSSD-TC: sssctl: sssd tools do not handle the implicit
          domain
@@ -67,28 +64,27 @@ class Testsssctl(object):
             pytest.skip("Files Provider support isn't available, skipping")
         users = localusers
         tools = sssdTools(multihost.client[0])
-        multihost.client[0].service_sssd('stop')
-        tools.remove_sss_cache('/var/lib/sss/db')
-        tools.remove_sss_cache('/var/log/sssd')
-        tools.sssd_conf("sssd",
-                        {'enable_files_domain': 'true'},
-                        action='update')
-        multihost.client[0].service_sssd('start')
+        multihost.client[0].service_sssd("stop")
+        tools.remove_sss_cache("/var/lib/sss/db")
+        tools.remove_sss_cache("/var/log/sssd")
+        tools.sssd_conf("sssd", {"enable_files_domain": "true"}, action="update")
+        multihost.client[0].service_sssd("start")
         for user in users.keys():
-            cmd = multihost.client[0].run_command('getent'
-                                                  ' -s sss'
-                                                  ' passwd %s '
-                                                  '&& sssctl '
-                                                  'user-show %s' %
-                                                  (user, user),
-                                                  raiseonerr=False)
-            assert 'Cache entry creation date' in \
-                   cmd.stdout_text and cmd.returncode == 0
+            cmd = multihost.client[0].run_command(
+                "getent"
+                " -s sss"
+                " passwd %s "
+                "&& sssctl "
+                "user-show %s" % (user, user),
+                raiseonerr=False,
+            )
+            assert (
+                "Cache entry creation date" in cmd.stdout_text and cmd.returncode == 0
+            )
 
-    @pytest.mark.converted('test_sss_cache.py', 'test_sss_cache__cache_expire_message')
+    @pytest.mark.converted("test_cache.py", "test_sss_cache__cache_expire_message")
     @pytest.mark.tier1_2
-    def test_0003_bz1661182(self, multihost,
-                            backupsssdconf):
+    def test_0003_bz1661182(self, multihost, backupsssdconf):
         """
         :title: sss_cache prints spurious error messages
          when invoked from shadow-utils on package install
@@ -111,24 +107,24 @@ class Testsssctl(object):
         if not multihost.client[0].detect_files_provider():
             pytest.skip("Files Provider support isn't available, skipping")
         tools = sssdTools(multihost.client[0])
-        ldap_params = {'enable_files_domain': 'false'}
-        tools.sssd_conf('sssd', ldap_params)
+        ldap_params = {"enable_files_domain": "false"}
+        tools.sssd_conf("sssd", ldap_params)
         with pytest.raises(SSSDException):
-            multihost.client[0].service_sssd('restart')
+            multihost.client[0].service_sssd("restart")
         ps_cmd = "> /var/log/sssd/sssd.log"
         multihost.client[0].run_command(ps_cmd)
         ps_cmd = "useradd user1_test"
         multihost.client[0].run_command(ps_cmd, raiseonerr=False)
         ps_cmd = "usermod -a -G wheel user1_test"
         cmd = multihost.client[0].run_command(ps_cmd)
-        assert 'No domains configured, fatal error!' \
-               not in cmd.stdout_text
+        assert "No domains configured, fatal error!" not in cmd.stdout_text
         ps_cmd = "userdel user1_test"
         multihost.client[0].run_command(ps_cmd)
-        for ps_cmd in ('sss_cache -U',
-                       'sss_cache -G',
-                       'sss_cache -E',
-                       'sss_cache -u non-existinguser'):
+        for ps_cmd in (
+            "sss_cache -U",
+            "sss_cache -G",
+            "sss_cache -E",
+            "sss_cache -u non-existinguser",
+        ):
             cmd = multihost.client[0].run_command(ps_cmd)
-            assert 'No domains configured, fatal error!' \
-                   not in cmd.stdout_text
+            assert "No domains configured, fatal error!" not in cmd.stdout_text
