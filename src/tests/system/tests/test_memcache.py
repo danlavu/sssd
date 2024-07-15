@@ -6,6 +6,8 @@ SSSD In-Memory Cache (memcache) Test Cases.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from sssd_test_framework.roles.client import Client
 from sssd_test_framework.roles.generic import GenericProvider
@@ -13,76 +15,117 @@ from sssd_test_framework.roles.ldap import LDAP
 from sssd_test_framework.topology import KnownTopology, KnownTopologyGroup
 
 
+def assert_users(
+    client: Client,
+    users: list[Any],
+    getent: bool | None = False,
+    attrs: list[str] | None = None,
+    members: list[str] | None = None,
+) -> None:
+    """
+    Assert user(s) are found, names match and optionally other attributes as well.
+    Uses 'getent' or 'id', defaults to 'id'. Can assert that user is in a member
+    of a group(s).
+
+    :param client: Client object
+    :type client: Client
+    :param users: List of users to assert, expects "user" object
+    :type users: list[Any]
+    :param getent: Switch to use getent instead of id, optional
+    :type getent: bool | None, optional
+    :param attrs: List of attributes to assert
+    :type attrs: list[str] | None, optional
+    :param members: Checks that users are a member list of groups
+    :type members: list[str] | None, optional
+    :return: None
+    """
+    for i in users:
+        result = client.tools.getent.passwd(i.name)
+        assert result is not None, f"User {i.name} was not found!"
+        if getent is True:
+            assert result.name == client.tools.getent.passwd(
+                i.name
+            ), f"Username {result.name} is wrong, {i.name} is expected!"
+            assert result.name == client.tools.getent.passwd(i.name)
+
+        else:
+            result = client.tools.id(i.name)
+            assert result.user.name is not None, f"User {i.name} was not found!"
+            assert result.user.name == i.name, f"Username {result.user.name} is wrong, {i.name} is expected!"
+
+        if attrs is not None and getent is False:
+            for j in attrs:
+                assert eval(f"result.user.{j}") == eval(f"{i}.{j}"), "Attributes do not match!"
+
+        if members is not None and getent is False:
+            for k in members:
+                assert result.memberof(k), f"Member {result.name} is not a member of {k}!"
+
+
 @pytest.mark.importance("critical")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
 def test_memcache__lookup_users(client: Client, provider: GenericProvider):
     """
-    :title: Lookup user by name uses memory cache when SSSD is stopped
+    :title: Lookup user when SSSD is stopped
     :setup:
-        1. Add 'user1', 'user2' and 'user3' to SSSD
+        1. Create users
         2. Start SSSD
     :steps:
-        1. Find 'user1', 'user2' and 'user3' with id(name)
-        2. Check that results have correct names
+        1. Lookup users
+        2. Check results
         3. Stop SSSD
-        4. Find 'user1', 'user2' and 'user3' with id(name)
-        5. Check that results have correct names
+        4. Lookup users
+        5. Check results
     :expectedresults:
         1. Users are found
-        2. Users have correct names
+        2. Users have correct values
         3. SSSD is stopped
         4. Users are found
-        5. Users have correct names
+        5. Users have correct values
     :customerscenario: False
     """
-
-    def check(users):
-        for user in users:
-            result = client.tools.id(user)
-            assert result is not None, f"User {user} was not found using id"
-            assert result.user.name == user, f"Username {result.user.name} is incorrect, {user} expected"
-
-    users = ["user1", "user2", "user3"]
-    for user in users:
-        provider.user(user).add()
+    users = ["user1", "user2", "user2"]
+    _users = []
+    for i in users:
+        _i = provider.user(i).add()
+        _users.extend(_i)
+    users = [provider.user("user1").add(), provider.user("user2").add(), provider.user("user3").add()]
 
     client.sssd.start()
 
-    check(users)
+    assert_users(client, users)
     client.sssd.stop()
-    check(users)
+    assert_users(client, users)
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
 def test_memcache__lookup_groups(client: Client, provider: GenericProvider):
     """
-    :title: Lookup group by groupname uses memory cache when SSSD is stopped
+    :title: Lookup groups when SSSD is stopped
     :setup:
-        1. Add 'group1', 'group2' and 'group3' to SSSD
+        1. Create groups
         2. Start SSSD
     :steps:
-        1. Find 'group1', 'group2' and 'group3' with getent.group(name)
-        2. Check that groups have correct names
+        1. Lookup groups
+        2. Check results
         3. Stop SSSD
-        4. Find 'group1', 'group2' and 'group3' with getent.group(name)
-        5. Check that groups have correct names
+        4. Lookup groups
+        5. Check results
     :expectedresults:
         1. Groups are found
-        2. Groups have correct names
+        2. Groups have correct values
         3. SSSD is stopped
         4. Groups are found
-        5. Groups have correct names
+        5. Groups have correct values
     :customerscenario: False
     """
 
-    def check(groups):
-        for group in groups:
-            result = client.tools.getent.group(group)
-            assert result is not None, f"Group {group} was not found using getent"
-            assert result.name == group, f"Groupname {result.name} is incorrect, {group} expected"
+    def assert_groups():
+        for name in groups:
+            result = client.tools.getent.group(name)
+            assert result is not None, f"Group {name} was not found using getent!"
+            assert result.name == name, f"Groupname {result.name} is incorrect, {name} expected!"
 
     groups = ["group1", "group2", "group3"]
     for group in groups:
@@ -90,41 +133,41 @@ def test_memcache__lookup_groups(client: Client, provider: GenericProvider):
 
     client.sssd.start()
 
-    check(groups)
+    assert_groups()
     client.sssd.stop()
-    check(groups)
+    assert_groups()
 
 
 @pytest.mark.importance("high")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
-def test_memcache__user_cache_is_disabled_and_lookup_groups(client: Client, provider: GenericProvider):
+def test_memcache__lookup_groups_and_memcache_size_passwd_is_disabled(client: Client, provider: GenericProvider):
     """
-    :title: Lookup group by groupname uses memory cache when SSSD is stopped and 'memcache_size_passwd' = 0
+    :title: Lookup groups when SSSD is stopped and user cache is disabled
+    :description: Ensures that disabling one type of object does not impact other object types
     :setup:
-        1. Add 'group1', 'group2' and 'group3' to SSSD
-        2. In SSSD nss change 'memcache_size_passwd' to '0'
-        3. Start SSSD
+        1. Create groups
+        2. Set 'memcache_size_passwd = 0' in nss section
+        2. Start SSSD
     :steps:
-        1. Find 'group1', 'group2' and 'group3' with getent.group(name)
-        2. Check that groups have correct names
+        1. Lookup groups
+        2. Check results
         3. Stop SSSD
-        4. Find 'group1', 'group2' and 'group3' with getent.group(name)
-        5. Check that groups have correct names
+        4. Lookup groups
+        5. Check results
     :expectedresults:
         1. Groups are found
-        2. Groups have correct names
+        2. Groups have correct values
         3. SSSD is stopped
         4. Groups are found
-        5. Groups have correct names
+        5. Groups have correct values
     :customerscenario: False
     """
 
-    def check(groups):
-        for group in groups:
-            result = client.tools.getent.group(group)
-            assert result is not None, f"Group {group} was not found using getent"
-            assert result.name == group, f"Groupname {result.name} is incorrect, {group} expected"
+    def assert_groups():
+        for name in groups:
+            result = client.tools.getent.group(name)
+            assert result is not None, f"Group {name} was not found using getent!"
+            assert result.name == name, f"Groupname {result.name} is incorrect, {name} expected!"
 
     groups = ["group1", "group2", "group3"]
     for group in groups:
@@ -133,35 +176,31 @@ def test_memcache__user_cache_is_disabled_and_lookup_groups(client: Client, prov
     client.sssd.nss["memcache_size_passwd"] = "0"
     client.sssd.start()
 
-    check(groups)
+    assert_groups()
     client.sssd.stop()
-    check(groups)
+    assert_groups()
 
 
 @pytest.mark.importance("high")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
-def test_memcache__user_cache_is_disabled_and_lookup_users(client: Client, provider: GenericProvider):
+def test_memcache__lookup_users_and_memcache_size_passwd_is_disabled(client: Client, provider: GenericProvider):
     """
-    :title: Lookup user by name when SSSD is stopped and 'memcache_size_passwd' = 0
-            uses memory cache therefore user is not found
+    :title: Lookup users when SSSD is stopped and user cache is disabled
+    :description: Disabling the same object type fails, this should not work
     :setup:
-        1. Add users to SSSD
-        2. Set users uids and gids
-        3. In SSSD nss change 'memcache_size_passwd' to '0'
+        1. Create users and set their uids and gids
+        3. In SSSD nss change 'memcache_size_passwd = 0'
         4. Start SSSD
     :steps:
-        1. Find 'user1', 'user2' and 'user3' with id(name)
-        2. Check that users have correct names
+        1. Lookup users
+        2. Check results
         3. Stop SSSD
-        4. Find users with id(name)
-        5. Find users with id(uid)
+        4. Lookup users
     :expectedresults:
         1. Users are found
-        2. Users have correct names
+        2. Users have correct values
         3. SSSD is stopped
         4. Users are not found
-        5. Users are not found
     :customerscenario: False
     """
     ids = [("user1", 10001), ("user2", 10002), ("user3", 10003)]
@@ -174,47 +213,47 @@ def test_memcache__user_cache_is_disabled_and_lookup_users(client: Client, provi
 
     for user, id in ids:
         result = client.tools.id(user)
-        assert result is not None, f"User {user} was not found using id"
-        assert result.user.name == user, f"Username {result.user.name} is incorrect, {user} expected"
-        assert result.user.id == id, f"User id {result.user.id} is incorrect, {id} expected"
+        assert result is not None, f"User {user} was not found using id!"
+        assert result.user.name == user, f"Username {result.user.name} is incorrect, {user} expected!"
+        assert result.user.id == id, f"User id {result.user.id} is incorrect, {id} expected!"
 
     client.sssd.stop()
 
     for user, id in ids:
-        assert client.tools.id(user) is None, f"User {user} was found which is not expected"
-        assert client.tools.id(id) is None, f"User with id {id} was found which is not expected"
+        assert client.tools.id(user) is None, f"User {user} was found which is not expected!"
+        assert client.tools.id(id) is None, f"User with id {id} was found which is not expected!"
 
 
 @pytest.mark.importance("high")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
-def test_memcache__initgroup_cache_is_disabled_and_lookup_groups(client: Client, provider: GenericProvider):
+def test_memcache__lookup_groups_and_memcache_size_initgroups_is_disabled(client: Client, provider: GenericProvider):
     """
-    :title: Lookup group by groupname when SSSD is stopped and 'memcache_size_initgroups' = 0 uses memory cache
+    :title: Lookup groups when SSSD is stopped and initgroup cache is disabled
+    :description: Ensures that disabling one type of object does not impact other object types
     :setup:
-        1. Add 'group1', 'group2' and 'group3' to SSSD
-        2. In SSSD nss change 'memcache_size_initgroups' to '0'
-        3. Start SSSD
+        1. Create groups
+        2. Set 'memcache_size_initgroup = 0' in nss section
+        2. Start SSSD
     :steps:
-        1. Find 'group1', 'group2' and 'group3' with getent.group(name)
-        2. Check that groups have correct names
+        1. Lookup groups
+        2. Check results
         3. Stop SSSD
-        4. Find 'group1', 'group2' and 'group3' with getent.group(name)
-        5. Check that groups have correct names
+        4. Lookup groups
+        5. Check results
     :expectedresults:
         1. Groups are found
-        2. Groups have correct names
+        2. Groups have correct values
         3. SSSD is stopped
         4. Groups are found
-        5. Groups have correct names
+        5. Groups have correct values
     :customerscenario: False
     """
 
-    def check(groups):
+    def assert_group():
         for group in groups:
             result = client.tools.getent.group(group)
-            assert result is not None, f"Group {group} was not found using getent"
-            assert result.name == group, f"Groupname {result.name} is incorrect, {group} expected"
+            assert result is not None, f"Group {group} was not found using getent!"
+            assert result.name == group, f"Groupname {result.name} is incorrect, {group} expected!"
 
     groups = ["group1", "group2", "group3"]
     for group in groups:
@@ -223,52 +262,48 @@ def test_memcache__initgroup_cache_is_disabled_and_lookup_groups(client: Client,
     client.sssd.nss["memcache_size_initgroups"] = "0"
     client.sssd.start()
 
-    check(groups)
+    assert_group()
     client.sssd.stop()
-    check(groups)
+    assert_group()
 
 
 @pytest.mark.importance("high")
 @pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
-def test_memcache__initgroup_cache_is_disabled_and_lookup_users(client: Client, provider: GenericProvider):
+def test_memcache__lookup_users_and_memcache_size_initgroup_is_disabled(client: Client, provider: GenericProvider):
     """
-    :title: Lookup user by name and id when SSSD is stopped and 'memcache_size_initgroups' = 0 uses memory cache
+    :title: Lookup users when SSSD is stopped and initgroup cache is disabled
+    :description: Ensures that disabling one type of object does not impact other object types
     :setup:
-        1. Add users to SSSD
-        2. Set users uids and ids
-        3. In SSSD nss change 'memcache_size_initgroups' to '0'
-        4. Start SSSD
+        1. Create users
+        2. Set 'memcache_size_initgroup = 0' in nss section
+        2. Start SSSD
     :steps:
-        1. Find 'user1', 'user2' and 'user3' with id(name)
-        2. Check that users have correct names and uids
+        1. Lookup Users
+        2. Check results
         3. Stop SSSD
-        4. Find 'user1', 'user2' and 'user3' with id(name)
-        5. Check that users have correct names and uids
-        6. Find 'user1', 'user2' and 'user3' with id(uid)
-        7. Check that users have correct names and uids
+        4. Lookup Users
+        5. Check results
     :expectedresults:
         1. Users are found
-        2. Users have correct names and uids
+        2. Users have correct values
         3. SSSD is stopped
-        4. Users are found
-        5. Users have correct names and uids
-        6. Users are found
-        7. Users have correct names and uids
+        4. Users found
+        5. Users have correct values
     :customerscenario: False
     """
 
-    def check(ids):
+    def assert_ids():
         for name, id in ids:
             result = client.tools.id(name)
-            assert result is not None, f"User {name} was not found using id"
-            assert result.user.name == name, f"Username {result.user.name} is incorrect, {user} expected"
-            assert result.user.id == id, f"User id {result.user.id} is incorrect, {id} expected"
+            assert result is not None, f"User {name} was not found using id!"
+            assert result.user.name == name, f"Username {result.user.name} is incorrect, {user} expected!"
+            assert result.user.id == id, f"User id {result.user.id} is incorrect, {id} expected!"
 
             result = client.tools.id(id)
-            assert result is not None, f"User with id {id} was not found using id"
-            assert result.user.name == name, f"Username {result.user.name} is incorrect, {user} expected"
-            assert result.user.id == id, f"User id {result.user.id} is incorrect, {id} expected"
+            assert result is not None, f"User with id {id} was not found using id!"
+            assert result.user.name == name, f"Username {result.user.name} is incorrect, {user} expected!"
+            assert result.user.id == id, f"User id {result.user.id} is incorrect, {id} expected!"
 
     ids = [("user1", 10001), ("user2", 10002), ("user3", 10003)]
     for user, id in ids:
@@ -278,54 +313,43 @@ def test_memcache__initgroup_cache_is_disabled_and_lookup_users(client: Client, 
     client.sssd.domain["ldap_id_mapping"] = "false"
     client.sssd.start()
 
-    check(ids)
+    assert_ids()
     client.sssd.stop()
-    check(ids)
+    assert_ids()
 
 
 @pytest.mark.importance("high")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
-def test_memcache__group_cache_disabled_and_lookup_groups(client: Client, provider: GenericProvider):
+def test_memcache__lookup_groups_and_memcache_size_groups_is_disabled(client: Client, provider: GenericProvider):
     """
-    :title: Lookup user by name and id when SSSD is stopped and 'memcache_size_group' = 0 uses memory cache,
-            but lookup groups is not possible
+    :title: Lookup groups when SSSD is stopped and group cache is disabled
+    :description: Disabling the same object type fails, this should not work
     :setup:
-        1. Add users to SSSD
-        2. Set users uids and gids
-        3. Add groups to SSSD
-        4. Set groups gids
-        5. Add users to groups
-        6. In SSSD nss change 'memcache_size_group' to '0'
-        7. Start SSSD
+        1. Create users and groups and set their uids and gids
+        3. In SSSD nss change 'memcache_size_passwd to 0' and 'ldap_id_mapping = false'
+        4. Start SSSD
     :steps:
-        1. Find 'user1', 'user2' and 'user3' with id(name)
-        2. Check that users have correct names
-        3. Find 'group1' and 'group2' by getent.group(gid)
-        4. Check that groups have correct gids and members
-        5. Stop SSSD
-        6. Find 'user1', 'user2' and 'user3' with id(name)
-        7. Check that users have correct names
-        8. Find 'group1' and 'group2' by getent.group(name)
-        9. Find 'group1' and 'group2' by getent.group(gid)
+        1. Lookup users and groups
+        2. Check results
+        3. Stop SSSD
+        4. Lookup users
+        5. Check results
+        6. Lookup groups
     :expectedresults:
-        1. Users are found
-        2. Users have correct names
-        3. Groups are found
-        4. Groups have correct gids and members
-        5. SSSD is stopped
-        6. Users are found
-        7. Users have correct names
-        8. Groups are not found
-        9. Groups are not found
+        1. Users and groups are found
+        2. Users and groups have correct values
+        3. SSSD is stopped
+        4. Users found
+        5. Users have correct values
+        6. Groups are not found
     :customerscenario: False
     """
 
-    def check(users):
-        for user in users:
-            rUser = client.tools.id(user)
-            assert rUser is not None, f"User {rUser} was not found using id"
-            assert rUser.user.name == user, f"Username {rUser.user.name} is incorrect, {user} expected"
+    def assert_users():
+        for i in ["user1", "user2", "user3"]:
+            result = client.tools.id(i)
+            assert result is not None, f"User {result} not found!"
+            assert result.user.name == i, f"Username {result.user.name} is incorrect, {result} expected!"
 
     u1 = provider.user("user1").add(uid=10001, gid=19001)
     u2 = provider.user("user2").add(uid=10002, gid=19002)
@@ -338,62 +362,43 @@ def test_memcache__group_cache_disabled_and_lookup_groups(client: Client, provid
     client.sssd.domain["ldap_id_mapping"] = "false"
     client.sssd.start()
 
-    users = ["user1", "user2", "user3"]
-    check(users)
+    assert_users()
 
     for group, members in [(1111, ["user1"]), (2222, ["user1", "user2", "user3"])]:
         result = client.tools.getent.group(group)
-        assert result is not None, f"Group {group} was not found using getent"
-        assert result.gid == group, f"Group gid {result.gid} is incorrect, {group} expected"
-        assert result.members == members, f"Group {group} members did not match the expected ones"
+        assert result is not None, f"Group {group} was not found using getent!"
+        assert result.gid == group, f"Group gid {result.gid} is incorrect, {group} expected!"
+        assert result.members == members, f"Group {group} members did not match the expected ones!"
 
     client.sssd.stop()
 
-    check(users)
+    assert_users()
 
-    assert client.tools.id("group1") is None, "Group group1 was found which is not expected"
-    assert client.tools.id("group2") is None, "Group group2 was found which is not expected"
-    assert client.tools.id(1111) is None, "Group with gid 1111 was found which is not expected"
-    assert client.tools.id(2222) is None, "Group with gid 2222 was found which is not expected"
+    assert client.tools.id("group1") is None, "Group group1 was found which is not expected!"
+    assert client.tools.id("group2") is None, "Group group2 was found which is not expected!"
+    assert client.tools.id(1111) is None, "Group with gid 1111 was found which is not expected!"
+    assert client.tools.id(2222) is None, "Group with gid 2222 was found which is not expected!"
 
 
 @pytest.mark.importance("high")
 @pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
-def test_memcache__all_caches_disabled_and_all_lookups_fails(client: Client, provider: GenericProvider):
+def test_memcache__lookup_all_types_objects_and_memcache_size_is_disabled(client: Client, provider: GenericProvider):
     """
     :title: Lookup user and group when SSSD is stopped and whole cache disabled
-            uses memory cache and therefore it is not possible
     :setup:
-        1. Add users to SSSD
-        2. Set users uids
-        3. Add groups to SSSD
-        4. Set groups gids
-        5. Add users to groups
-        6. In SSSD nss change 'memcache_size_passwd' to '0'
-        7. In SSSD nss change 'memcache_size_group' to '0'
-        8. In SSSD nss change 'memcache_size_initgroups' to '0'
-        9. Start SSSD
+        1. Create users and set uids
+        2. Create groups and set gids and add members
+        3. Configure SSSD and set all 'memcache_size_passwd|group|initgroup = 0'
+        4. Start SSSD
     :steps:
-        1. Find 'user1', 'user2' and 'user3' with id(name)
-        2. Check that users have correct names
-        3. Find 'group1' and 'group2' by getent.group(name)
-        4. Check that groups have correct names and members
-        5. Stop SSSD
-        6. Find 'user1', 'user2' and 'user3' with id(name)
-        7. Find 'user1', 'user2' and 'user3' with id(uid)
-        8. Find 'group1' and 'group2' by getent.group(name)
-        9. Find 'group1' and 'group2' by getent.group(gid)
+        1. Lookup users and groups
+        2. Stop SSSD
+        3. Lookup users and groups
     :expectedresults:
-        1. Users are found
-        2. Users have correct names
-        3. Groups are found
-        4. Groups have correct names and members
-        5. SSSD is stopped
-        6. Users are not found
-        7. Users are not found
-        8. Groups are not found
-        9. Groups are not found
+        1. Users and groups are found and have correct values
+        2. SSSD is stopped
+        3. Users and groups are not found
     :customerscenario: False
     """
     u1 = provider.user("user1").add(uid=10001, gid=19001)
@@ -411,67 +416,66 @@ def test_memcache__all_caches_disabled_and_all_lookups_fails(client: Client, pro
 
     for user in ["user1", "user2", "user3"]:
         result = client.tools.id(user)
-        assert result is not None, f"User {user} was not found using id"
-        assert result.user.name == user, f"Username {result.user.name} is incorrect, {user} expected"
+        assert result is not None, f"User {user} was not found using id!"
+        assert result.user.name == user, f"Username {result.user.name} is incorrect, {user} expected!"
 
     for group, members in [("group1", ["user1"]), ("group2", ["user1", "user2", "user3"])]:
         gresult = client.tools.getent.group(group)
-        assert gresult is not None, f"Group {group} was not found using id"
-        assert gresult.name == group, f"Groupname {gresult.name} is incorrect, {group} expected"
-        assert gresult.members == members, f"Group {group} members did not match the expected ones"
+        assert gresult is not None, f"Group {group} was not found using id!"
+        assert gresult.name == group, f"Groupname {gresult.name} is incorrect, {group} expected!"
+        assert gresult.members == members, f"Group {group} members did not match the expected one!"
 
     client.sssd.stop()
 
     for user in ["user1", "user2", "user3"]:
-        assert client.tools.id(user) is None, f"User {user} was found which is not expected"
+        assert client.tools.id(user) is None, f"User {user} was found which is not expected!"
 
     for id in [10001, 10002, 10003]:
-        assert client.tools.id(id) is None, f"User with id {id} was found which is not expected"
+        assert client.tools.id(id) is None, f"User with id {id} was found which is not expected!"
 
-    assert client.tools.getent.group("group1") is None, "Group group1 was found which is not expected"
-    assert client.tools.getent.group("group2") is None, "Group group2 was found which is not expected"
-    assert client.tools.getent.group(1111) is None, "Group with gid 1111 was found which is not expected"
-    assert client.tools.getent.group(2222) is None, "Group with gid 2222 was found which is not expected"
+    assert client.tools.getent.group("group1") is None, "Group group1 was found which is not expected!"
+    assert client.tools.getent.group("group2") is None, "Group group2 was found which is not expected!"
+    assert client.tools.getent.group(1111) is None, "Group with gid 1111 was found which is not expected!"
+    assert client.tools.getent.group(2222) is None, "Group with gid 2222 was found which is not expected!"
 
 
 @pytest.mark.importance("critical")
 @pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
-def test_memcache__lookup_users_check_group_memberships(client: Client, provider: GenericProvider):
+def test_memcache__lookup_users_and_check_group_memberships(client: Client, provider: GenericProvider):
     """
-    :title: Lookup user by name and test membership by name use memory cache when SSSD is stopped
+    :title: Lookup users and check groups when SSSD is stopped
     :setup:
-        1. Add 'user1', 'user2' and 'user3' to SSSD
-        2. Add 'group1' and 'group2' to SSSD
-        3. Add users to groups
-        4. Start SSSD
+        1. Create users and groups
+        2. Add 'user1' to 'group1', and all users to 'group2'
+        3. Start SSSD
     :steps:
-        1. Find 'user1', 'user2' and 'user3' with id(name)
-        2. Check that users are members of correct groups
+        1. Lookup users by uid
+        2. Check results
         3. Stop SSSD
-        4. Find 'user1', 'user2' and 'user3' with id(name)
-        5. Check that users are members of correct groups
+        4. Lookup users by uid
+        5. Check results
     :expectedresults:
         1. Users are found
-        2. Users are members of correct groups
+        2. Group members are correct
         3. SSSD is stopped
         4. Users are found
-        5. Users are members of correct groups
+        5. Group members are correct
     :customerscenario: False
     """
 
-    def check():
+    def assert_users():
         result = client.tools.id("user1")
-        assert result is not None, "User user1 was not found using id"
-        assert result.memberof(["group1", "group2"]), "User user1 is member of incorrect groups"
+        assert result is not None, "User user1 was not found using id!"
+        assert result.memberof(["group1", "group2"]), "User user1 is member of incorrect groups!"
 
         result = client.tools.id("user2")
-        assert result is not None, "User user2 was not found using id"
-        assert result.memberof(["group2"]), "User user2 is member of incorrect groups"
+        assert result is not None, "User user2 was not found using id!"
+        assert result.memberof(["group2"]), "User user2 is member of incorrect groups!"
 
         result = client.tools.id("user3")
-        assert result is not None, "User user3 was not found using id"
-        assert result.memberof(["group2"]), "User user3 is member of incorrect groups"
+        assert result is not None, "User user3 was not found using id!"
+        assert result.memberof(["group2"]), "User user3 is member of incorrect groups!"
 
     u1 = provider.user("user1").add()
     u2 = provider.user("user2").add()
@@ -482,50 +486,47 @@ def test_memcache__lookup_users_check_group_memberships(client: Client, provider
 
     client.sssd.start()
 
-    check()
+    assert_users()
     client.sssd.stop()
-    check()
+    assert_users()
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
-def test_memcache__lookup_users_and_check_membership_by_gid(client: Client, provider: GenericProvider):
+def test_memcache__lookup_users_and_check_group_membership_by_gid(client: Client, provider: GenericProvider):
     """
-    :title: Lookup user by name and test membership by gid use memory cache when SSSD is stopped
+    :title: Lookup user and check group membership by gid when SSSD is stopped
     :setup:
-        1. Add 'user1', 'user2' and 'user3' to SSSD
-        2. Add 'group1', 'group2' and 'group3' to SSSD
-        3. Set group gids
-        4. Add users to groups
-        5. Start SSSD
+        1. Create users and groups
+        2. Add 'user1' to 'group1', and all users to 'group2'
+        3. Start SSSD
     :steps:
-        1. Find 'user1', 'user2' and 'user3' with id(name)
-        2. Check that users are members of correct groups
+        1. Lookup users by uid
+        2. Check results
         3. Stop SSSD
-        4. Find 'user1', 'user2' and 'user3' with id(name)
-        5. Check that users are members of correct groups
+        4. Lookup users by uid
+        5. Check results
     :expectedresults:
         1. Users are found
-        2. Users are members of correct groups
+        2. Group members are correct
         3. SSSD is stopped
         4. Users are found
-        5. Users are members of correct groups
+        5. Group members are correct
     :customerscenario: False
     """
 
     def check():
         result = client.tools.id("user1")
-        assert result is not None, "User user1 was not found using id"
-        assert result.memberof([1001, 1002]), "User user1 is member of incorrect groups"
+        assert result is not None, "User user1 was not found using id!"
+        assert result.memberof([1001, 1002]), "User user1 is member of incorrect groups!"
 
         result = client.tools.id("user2")
-        assert result is not None, "User user2 was not found using id"
-        assert result.memberof([1002]), "User user2 is member of incorrect groups"
+        assert result is not None, "User user2 was not found using id!"
+        assert result.memberof([1002]), "User user2 is member of incorrect groups!"
 
         result = client.tools.id("user3")
-        assert result is not None, "User user3 was not found using id"
-        assert result.memberof([1002]), "User user3 is member of incorrect groups"
+        assert result is not None, "User user3 was not found using id!"
+        assert result.memberof([1002]), "User user3 is member of incorrect groups!"
 
     u1 = provider.user("user1").add(uid=11001, gid=19001)
     u2 = provider.user("user2").add(uid=11002, gid=19002)
@@ -544,45 +545,41 @@ def test_memcache__lookup_users_and_check_membership_by_gid(client: Client, prov
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
-def test_memcache__lookup_uids_and_check_membership_by_gid(client: Client, provider: GenericProvider):
+def test_memcache__lookup_users_by_uids_and_check_group_membership_by_gid(client: Client, provider: GenericProvider):
     """
-    :title: Lookup user by id and test membership by gid use memory cache when SSSD is stopped
+    :title: Lookup user by id and check group membership by gid when SSSD is stopped
     :setup:
-        1. Add 'user1', 'user2' and 'user3' to SSSD
-        2. Set users uids and gids
-        3. Add 'group1' and 'group2' to SSSD
-        4. Set groups gids
-        5. Add users to groups
-        6. Start SSSD
+        1. Create users and groups
+        2. Add 'user1' to 'group1', and all users to 'group2'
+        3. Start SSSD
     :steps:
-        1. Find users by id(uid)
-        2. Check that users are members of correct groups
+        1. Lookup users by uid
+        2. Check results
         3. Stop SSSD
-        4. Find users by id(uid)
-        5. Check that users are members of correct groups
+        4. Lookup users by uid
+        5. Check results
     :expectedresults:
         1. Users are found
-        2. Users are members of correct groups
+        2. Group members are correct
         3. SSSD is stopped
         4. Users are found
-        5. Users are members of correct groups
+        5. Group members are correct
     :customerscenario: False
     """
 
     def check():
         result = client.tools.id(2001)
-        assert result is not None, "User with id 2001 was not found using id"
-        assert result.memberof([101, 1001, 1002]), "User with id 2001 is member of incorrect groups"
+        assert result is not None, "User with id 2001 was not found using id!"
+        assert result.memberof([101, 1001, 1002]), "User with id 2001 is member of incorrect groups!"
 
         result = client.tools.id(2002)
-        assert result is not None, "User with id 2002 was not found using id"
-        assert result.memberof([102, 1002]), "User with id 2002 is member of incorrect groups"
+        assert result is not None, "User with id 2002 was not found using id!"
+        assert result.memberof([102, 1002]), "User with id 2002 is member of incorrect groups!"
 
         result = client.tools.id(2003)
-        assert result is not None, "User with id 2003 was not found using id"
-        assert result.memberof([103, 1002]), "User with id 2003 is member of incorrect groups"
+        assert result is not None, "User with id 2003 was not found using id!"
+        assert result.memberof([103, 1002]), "User with id 2003 is member of incorrect groups!"
 
     u1 = provider.user("user1").add(uid=2001, gid=101)
     u2 = provider.user("user2").add(uid=2002, gid=102)
@@ -600,46 +597,37 @@ def test_memcache__lookup_uids_and_check_membership_by_gid(client: Client, provi
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
 def test_memcache__lookup_users_by_fully_qualified_names(client: Client, provider: GenericProvider):
     """
-    :title: Lookup user by full name when 'use_fully_qualified_names' is 'true'
-            uses memory cache when sssd is stopped
+    :title: Lookup user by fully qualified name when SSSD is stopped
     :setup:
-        1. Add 'user1' and 'user2' to SSSD
-        2. In SSSD domain change 'use_fully_qualified_names' to 'true'
-        3. Start SSSD
+        1. Create users
+        2. Configure SSSD with "use_fully_qualified_name = true"
+        2. Start SSSD
     :steps:
-        1. Find 'user1' and 'user2' with id(name)
-        2. Find 'user1' and 'user2' with id(name@domain)
-        3. Check that users have correct full names
-        4. Stop SSSD
-        5. Find 'user1' and 'user2' with id(name)
-        6. Find 'user1' and 'user2' with id(name@domain)
-        7. Check that users have correct full names
+        1. Lookup users
+        2. Lookup users by fully qualified name and by id
+        3. Stop SSSD
+        4. Lookup users by fully qualified name and by id
     :expectedresults:
-        1. Users are not found
-        2. Users are found
-        3. Users have correct full names
-        4. SSSD is stopped
-        5. Users are not found
-        6. Users are found
-        7. Users have correct full names
+        1. Users are found
+        2. SSSD is stopped
+        3. Users are found
     :customerscenario: False
     """
 
-    def check():
+    def assert_users():
         assert client.tools.id("user1") is None, "User user1 should not be found without fully qualified name"
         assert client.tools.id("user2") is None, "User user2 should not be found without fully qualified name"
 
         result = client.tools.id("user1@test")
-        assert result is not None, "User user1@test was not found using id"
-        assert result.user.name == "user1@test", f"User {result.user.name} has incorrect name, user1@test expected"
+        assert result is not None, "User user1@test was not found using id!"
+        assert result.user.name == "user1@test", f"User {result.user.name} has incorrect name, user1@test expected!"
 
         result = client.tools.id("user2@test")
-        assert result is not None, "User user2@test was not found using id"
-        assert result.user.name == "user2@test", f"User {result.user.name} has incorrect name, user2@test expected"
+        assert result is not None, "User user2@test was not found using id!"
+        assert result.user.name == "user2@test", f"User {result.user.name} has incorrect name, user2@test expected!"
 
     provider.user("user1").add()
     provider.user("user2").add()
@@ -647,44 +635,38 @@ def test_memcache__lookup_users_by_fully_qualified_names(client: Client, provide
     client.sssd.domain["use_fully_qualified_names"] = "true"
     client.sssd.start()
 
-    check()
+    assert_users()
     client.sssd.stop()
-    check()
+    assert_users()
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
-def test_memcache__lookup_users_when_case_insensitive_is_false(client: Client, provider: GenericProvider):
+def test_memcache__lookup_users_when_case_sensitive_is_false(client: Client, provider: GenericProvider):
     """
-    :title: Lookup user by case insensitive name when 'case_sensitive' is 'false'
-            uses memory cache when SSSD is stopped
+    :title: Lookup user ignoring case sensitivity when SSSD is stopped
+    :description:
+        The cache only stores the last lookup, while all the iterations work when SSSD is working,
+        only last one will work when it's offline.
     :setup:
-        1. Add 'user1' to SSSD
-        2. Set user gid and uid
-        3. Add groups to SSSD
-        4. Set group gid
-        5. Add member to the groups
-        6. In SSSD domain change 'case_sensitive' to 'false'
-        7. Start SSSD
+        1. Create user with uid and gid
+        2. Create groups with gids and add users to groups
+        3. Configure SSSD with 'case-insensitive = false'
+        4. Start SSSD
     :steps:
-        1. Find users with getent.initgroups(name), where name is in random lower and upper case format
-        2. Check that usernames are correct
-        3. Check that user is member of correct groups
-        4. Stop SSSD
-        5. Find user with getent.initgroups(name), where name is last name used when resolving user
-        6. Check that username is correct
-        7. Check that user is member of correct groups
-        8. Find users with getent.initgroups(name), where names are previously used names
+        1. Lookup users with mixed capitalization
+        2. Check users group membership
+        3. Stop SSSD
+        4. Lookup users with last iteration of the username
+        5. Check users group memberships
+        6. Check other iterations of the username
     :expectedresults:
         1. Users are found
-        2. Users have correct names
-        3. User is member of correct groups
-        4. SSSD is stopped
-        5. User is found
-        6. User has correct name
-        7. User is member of correct groups
-        8. Users are not found
+        2. User's groups are correct
+        3. SSSD is stopped
+        4. User is found
+        5. User's groups are correct
+        6. No users are found
     :customerscenario: False
     """
     u1 = provider.user("user1").add(uid=10001, gid=2001)
@@ -698,56 +680,50 @@ def test_memcache__lookup_users_when_case_insensitive_is_false(client: Client, p
 
     for name in ["uSer1", "useR1", "USER1", "user1", "uSER1"]:
         result = client.tools.getent.initgroups(name)
-        assert result.name == name, f"Username {result.name} is not correct, {name} expected"
-        assert result.memberof([10010, 10011, 10012]), f"User {result.name} is member of wrong groups"
+        assert result.name == name, f"Username {result.name} is not correct, {name} expected!"
+        assert result.memberof([10010, 10011, 10012]), f"User {result.name} is member of wrong groups!"
 
     client.sssd.stop()
 
     result = client.tools.getent.initgroups("uSER1")
-    assert result.name == "uSER1", f"Username {result.name} is not correct, uSER1 expected"
-    assert result.memberof([10010, 10011, 10012]), f"User {result.name} is member of wrong groups"
+    assert result.name == "uSER1", f"Username {result.name} is not correct, uSER1 expected!"
+    assert result.memberof([10010, 10011, 10012]), f"User {result.name} is member of wrong groups!"
 
-    # Only last version of name is stored in cache
-    # That is why initgroups call returns no secondary groups
-    assert client.tools.getent.initgroups("uSer1").groups == [], "User uSer1 should not be found in cache"
-    assert client.tools.getent.initgroups("useR1").groups == [], "User useR1 should not be found in cache"
-    assert client.tools.getent.initgroups("USER1").groups == [], "User USER1 should not be found in cache"
-    assert client.tools.getent.initgroups("user1").groups == [], "User user1 should not be found in cache"
+    assert client.tools.getent.initgroups("uSer1").groups == [], "User uSer1 should not be found in cache!"
+    assert client.tools.getent.initgroups("useR1").groups == [], "User useR1 should not be found in cache!"
+    assert client.tools.getent.initgroups("USER1").groups == [], "User USER1 should not be found in cache!"
+    assert client.tools.getent.initgroups("user1").groups == [], "User user1 should not be found in cache!"
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
-def test_memcache__lookup_users_when_fully_qualified_name_is_true_and_case_ins_is_false(
+def test_memcache__lookup_fully_qualified_usernames_when_case_sensitivity_is_false(
     client: Client, provider: GenericProvider
 ):
     """
-    :title: Lookup user by case insensitive fully qualified name when 'case_sensitive' is 'false'
-            and 'use_fully_qualified_names' is 'true' uses memory cache when SSSD is stopped
+    :title: Lookup user's fully qualified name ignoring case sensitivity when SSSD is stopped
+    :description:
+        The cache only stores the last lookup, while all the iterations work when SSSD is working,
+        only last one will work when it's offline.
     :setup:
-        1. Add user to SSSD
-        2. Add groups to SSSD
-        3. Set groups gids
-        4. Add members to the groups
-        5. In SSSD domain change 'use_fully_qualified_names' to 'true'
-        6. In SSSD domain change 'case_sensitive' to 'false'
-        7. Start SSSD
+        1. Create user with uid and gid
+        2. Create groups with gids and add users to groups
+        3. Configure SSSD with 'case-insensitive = false' and 'fully_qualified_names = true'
+        4. Start SSSD
     :steps:
-        1. Find user with names without domain
-        2. Find user with getent.initgroups(name@domain), where name is in random lower and upper case format
-        3. Check that user is members of correct groups
-        4. Stop SSSD
-        5. Find user with getent.initgroups(name@domain), where same name as in 2.
-        6. Check that user is member of correct groups
-        7. Find users with names, that should not be found
+        1. Lookup users with mixed capitalization
+        2. Check users group membership
+        3. Stop SSSD
+        4. Lookup users with last iteration of the username
+        5. Check users group memberships
+        6. Check other iterations of the username
     :expectedresults:
-        1. User is not found
-        2. User is found
-        3. User is member of correct groups
-        4. SSSD is stopped
-        5. User is found
-        6. User is member of correct groups
-        7. Users are not found
+        1. Users are found
+        2. User's groups are correct
+        3. SSSD is stopped
+        4. User is found
+        5. User's groups are correct
+        6. No users are found
     :customerscenario: False
     """
     u1 = provider.user("user1").add(gid=19001, uid=11001)
@@ -761,24 +737,23 @@ def test_memcache__lookup_users_when_fully_qualified_name_is_true_and_case_ins_i
     client.sssd.domain["ldap_id_mapping"] = "false"
     client.sssd.start()
 
-    assert client.tools.getent.initgroups("uSer1").groups == [], "User uSer1 should be found only with fq name"
-    assert client.tools.getent.initgroups("user1").groups == [], "User user1 should be found only with fq name"
+    assert client.tools.getent.initgroups("uSer1").groups == [], "User uSer1@test not found!"
+    assert client.tools.getent.initgroups("user1").groups == [], "User user1@test not found!"
 
     result = client.tools.getent.initgroups("uSer1@test")
-    assert result.memberof([20001, 20002, 20003]), "User uSer1@test is member of incorrect groups"
+    assert result.memberof([20001, 20002, 20003]), "User uSer1@test is member of incorrect groups!"
 
     client.sssd.stop()
 
     result = client.tools.getent.initgroups("uSer1@test")
-    assert result.memberof([20001, 20002, 20003]), "User uSer1@test is member of incorrect groups"
+    assert result.memberof([20001, 20002, 20003]), "User uSer1@test is member of incorrect groups!"
 
-    assert client.tools.getent.initgroups("user1@test").groups == [], "User user1@test should not be found in cache"
-    assert client.tools.getent.initgroups("user1").groups == [], "User user1 should be found only with fq name"
-    assert client.tools.getent.initgroups("uSer1").groups == [], "User uSer1 should be found only with fq name"
+    assert client.tools.getent.initgroups("user1@test").groups == [], "User user1@test found!"
+    assert client.tools.getent.initgroups("user1").groups == [], "User user1@test found!"
+    assert client.tools.getent.initgroups("uSer1").groups == [], "User uSer1@test found!"
 
 
 @pytest.mark.importance("high")
-@pytest.mark.cache
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
 def test_memcache__invalidation_of_gids_after_initgroups(client: Client, provider: GenericProvider):
     """
@@ -809,24 +784,24 @@ def test_memcache__invalidation_of_gids_after_initgroups(client: Client, provide
     :customerscenario: False
     """
 
-    def check_user_passwd():
+    def assert_users():
         for user in ("user1", 10001):
             result = client.tools.getent.passwd(user)
-            assert result is not None, f"User {user} was not found using getent"
-            assert result.uid == 10001, f"User id {result.uid} is incorrect, expected 10001"
-            assert result.name == "user1", f"Username {result.name} is incorrect, expected user1"
+            assert result is not None, f"User {user} was not found using getent!"
+            assert result.uid == 10001, f"User id {result.uid} is incorrect, expected 10001!"
+            assert result.name == "user1", f"Username {result.name} is incorrect, expected user1!"
 
-    def check_initgroups():
+    def assert_initgroups():
         result = client.tools.getent.initgroups("user1")
-        assert result.name == "user1", f"Username {result.name} is incorrect, user1 expected"
-        assert result.memberof([12345]), "User user1 is member of incorrect groups"
+        assert result.name == "user1", f"Username {result.name} is incorrect, user1 expected!"
+        assert result.memberof([12345]), "User user1 is member of incorrect groups!"
 
-    def check_group(name, gid):
+    def assert_group(name, gid):
         for group in (name, gid):
             gresult = client.tools.getent.group(group)
-            assert gresult is not None, f"Group {group} was not found using getent"
-            assert gresult.name == name, f"Groupname {gresult.name} is incorrect, {name} expected"
-            assert gresult.gid == gid, f"Group gid {gresult.gid} is incorrect, {gid} expected"
+            assert gresult is not None, f"Group {group} was not found using getent!"
+            assert gresult.name == name, f"Groupname {gresult.name} is incorrect, {name} expected!"
+            assert gresult.gid == gid, f"Group gid {gresult.gid} is incorrect, {gid} expected!"
 
     u1 = provider.user("user1").add(uid=10001, gid=19001)
 
@@ -837,24 +812,24 @@ def test_memcache__invalidation_of_gids_after_initgroups(client: Client, provide
     client.sssd.domain["ldap_id_mapping"] = "false"
     client.sssd.start()
 
-    check_user_passwd()
+    assert_users()
 
-    check_group("group1", 12345)
-    check_group("group2", 22222)
+    assert_group("group1", 12345)
+    assert_group("group2", 22222)
 
-    check_initgroups()
+    assert_initgroups()
 
     client.sssd.stop()
 
-    check_user_passwd()
-    check_group("group2", 22222)
+    assert_users()
+    assert_group("group2", 22222)
 
-    check_initgroups()
+    assert_initgroups()
 
-    assert client.tools.getent.group(12345) is None, "Group with gid 12345 was found which is not expected"
-    assert client.tools.getent.group(123450) is None, "Group with gid 123450 was found which is not expected"
-    assert client.tools.getent.group("group1") is None, "Group group1 was found which is not expected"
-    assert client.tools.getent.group("group1_") is None, "Group group1_ was found which is not expected"
+    assert client.tools.getent.group(12345) is None, "Group with gid 12345 was found which is not expected!"
+    assert client.tools.getent.group(123450) is None, "Group with gid 123450 was found which is not expected!"
+    assert client.tools.getent.group("group1") is None, "Group group1 was found which is not expected!"
+    assert client.tools.getent.group("group1_") is None, "Group group1_ was found which is not expected!"
 
 
 @pytest.mark.importance("high")
