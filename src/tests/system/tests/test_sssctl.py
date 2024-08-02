@@ -17,7 +17,6 @@ from sssd_test_framework.topology import KnownTopology
 
 
 @pytest.mark.importance("high")
-@pytest.mark.tools
 @pytest.mark.ticket(bz=2100789)
 @pytest.mark.topology(KnownTopology.LDAP)
 def test_sssctl__check_missing_id_provider(client: Client):
@@ -46,7 +45,6 @@ def test_sssctl__check_missing_id_provider(client: Client):
 
 
 @pytest.mark.importance("high")
-@pytest.mark.tools
 @pytest.mark.ticket(bz=2100789)
 @pytest.mark.topology(KnownTopology.LDAP)
 def test_sssctl__check_invalid_id_provider(client: Client):
@@ -190,7 +188,6 @@ def test_sssctl__reset_cached_timestamps_to_reflect_changes(client: Client, ldap
 
 
 @pytest.mark.importance("high")
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_invalid_option_name(client: Client):
     """
@@ -216,7 +213,6 @@ def test_sssctl__check_invalid_option_name(client: Client):
 
 
 @pytest.mark.importance("high")
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_missing_domain_name(client: Client):
     """
@@ -241,7 +237,6 @@ def test_sssctl__check_missing_domain_name(client: Client):
 
 
 @pytest.mark.importance("high")
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_misplaced_option(client: Client):
     """
@@ -269,7 +264,6 @@ def test_sssctl__check_misplaced_option(client: Client):
     assert pattern.search(result.stdout), "Wrong error message was returned"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_invalid_option_name_in_snippet(client: Client):
     """
@@ -292,7 +286,6 @@ def test_sssctl__check_invalid_option_name_in_snippet(client: Client):
     assert "Attribute 'invalid_option' is not allowed" in result.stdout, "Wrong error message was returned"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_invalid_section_in_name_in_snippet(client: Client):
     """
@@ -315,7 +308,6 @@ def test_sssctl__check_invalid_section_in_name_in_snippet(client: Client):
     assert "Section [invalid/local] is not allowed" in result.stdout, "Wrong error message was returned"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_missing_equal_sign(client: Client):
     """
@@ -341,7 +333,6 @@ def test_sssctl__check_missing_equal_sign(client: Client):
     assert "Equal sign is missing" in result.stderr, "Wrong error message on stderr"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_special_character_in_option_name(client: Client):
     """
@@ -367,7 +358,6 @@ def test_sssctl__check_special_character_in_option_name(client: Client):
     assert "Attribute 'id_@provider' is not allowed in section" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_special_character_in_section_name(client: Client):
     """
@@ -393,7 +383,6 @@ def test_sssctl__check_special_character_in_section_name(client: Client):
     assert "Section [d$main/local] is not allowed" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_special_character_in_domain_name(client: Client):
     """
@@ -419,7 +408,6 @@ def test_sssctl__check_special_character_in_domain_name(client: Client):
     assert "Section [domain/local@] is not allowed" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_forward_slash_missing_in_domain_section(client: Client):
     """
@@ -445,7 +433,6 @@ def test_sssctl__check_forward_slash_missing_in_domain_section(client: Client):
     assert "Section [domainlocal] is not allowed" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_invalid_sssd_section_name(client: Client):
     """
@@ -471,7 +458,6 @@ def test_sssctl__check_invalid_sssd_section_name(client: Client):
     assert "Section [sssdx] is not allowed" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_invalid_pam_section_name(client: Client):
     """
@@ -497,7 +483,6 @@ def test_sssctl__check_invalid_pam_section_name(client: Client):
     assert "Section [pamx] is not allowed" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_invalid_nss_section_name(client: Client):
     """
@@ -523,7 +508,6 @@ def test_sssctl__check_invalid_nss_section_name(client: Client):
     assert "Section [nssx] is not allowed" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_invalid_permission(client: Client):
     """
@@ -547,7 +531,6 @@ def test_sssctl__check_invalid_permission(client: Client):
     assert "File ownership and permissions check failed" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_missing_closing_bracket(client: Client):
     """
@@ -573,7 +556,6 @@ def test_sssctl__check_missing_closing_bracket(client: Client):
     assert "No closing bracket" in result.stderr, "Wrong error message on stderr"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_missing_opening_bracket(client: Client):
     """
@@ -601,7 +583,6 @@ def test_sssctl__check_missing_opening_bracket(client: Client):
     assert "Failed to parse configuration" in result.stderr, "Wrong error message on stderr"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_invalid_options_in_two_domains(client: Client):
     """
@@ -633,7 +614,6 @@ def test_sssctl__check_invalid_options_in_two_domains(client: Client):
     assert "Attribute 'ldap_ri' is not allowed in section 'domain/ldap2'" in res.stdout, "Wrong error message"
 
 
-@pytest.mark.tools
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_config_does_not_exist(client: Client):
     """
@@ -658,7 +638,6 @@ def test_sssctl__check_config_does_not_exist(client: Client):
     assert "File /etc/sssd/sssd.conf does not exist" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1677994)
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_ldap_host_object_class_in_domain(client: Client):
@@ -682,7 +661,6 @@ def test_sssctl__check_ldap_host_object_class_in_domain(client: Client):
     assert result.rc == 0, "Config-check failed"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1677994)
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_ldap_host_object_class_not_allowed_in_sssd(client: Client):
@@ -708,7 +686,6 @@ def test_sssctl__check_ldap_host_object_class_not_allowed_in_sssd(client: Client
     ), "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1856861)
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_enabling_2fa_prompting(client: Client):
@@ -736,7 +713,6 @@ def test_sssctl__check_enabling_2fa_prompting(client: Client):
     assert result.rc == 0, "Config-check failed"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1791892)
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_auto_private_groups_in_child_domains(client: Client):
@@ -762,7 +738,6 @@ def test_sssctl__check_auto_private_groups_in_child_domains(client: Client):
     assert result.rc == 0, "Config-check failed"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1723273)
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_non_default_config_location_missing_snippet_directory(client: Client):
@@ -788,7 +763,6 @@ def test_sssctl__check_non_default_config_location_missing_snippet_directory(cli
     assert "Directory /tmp/test/conf.d does not exist" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1723273)
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_non_default_config_location_invalid_permission(client: Client):
@@ -814,7 +788,6 @@ def test_sssctl__check_non_default_config_location_invalid_permission(client: Cl
     assert "File ownership and permissions check failed" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1723273)
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_non_default_config_location_invalid_option_name(client: Client):
@@ -845,7 +818,6 @@ def test_sssctl__check_non_default_config_location_invalid_option_name(client: C
     ), "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1723273)
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_non_default_config_location_with_snippet_directory(client: Client):
@@ -873,7 +845,6 @@ def test_sssctl__check_non_default_config_location_with_snippet_directory(client
     assert "Directory /tmp/test/conf.d does not exist" not in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1723273)
 @pytest.mark.topology(KnownTopology.Client)
 def test_sssctl__check_non_existing_snippet(client: Client):
@@ -896,7 +867,6 @@ def test_sssctl__check_non_existing_snippet(client: Client):
     assert "Directory /does/not/exist does not exist" in result.stdout, "Wrong error message on stdout"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1294670)
 @pytest.mark.topology(KnownTopology.LDAP)
 def test_sssctl__analyze_list(client: Client, ldap: LDAP):
@@ -958,7 +928,6 @@ def test_sssctl__analyze_list(client: Client, ldap: LDAP):
     assert "getent" in res.stdout, "getent not found in analyze list -v output"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1294670, gh=6298)
 @pytest.mark.topology(KnownTopology.LDAP)
 def test_sssctl__analyze_non_default_log_location(client: Client, ldap: LDAP):
@@ -1007,7 +976,6 @@ def test_sssctl__analyze_non_default_log_location(client: Client, ldap: LDAP):
     assert "sshd" in res.stdout or "coreutils" in res.stdout, "sshd or coreutils not found in output"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=1294670)
 @pytest.mark.topology(KnownTopology.LDAP)
 def test_sssctl__analyze_pam_logs(client: Client, ldap: LDAP):
@@ -1042,7 +1010,6 @@ def test_sssctl__analyze_pam_logs(client: Client, ldap: LDAP):
     assert "SSS_PAM_SETCRED" in result.stdout
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=2013259)
 @pytest.mark.topology(KnownTopology.LDAP)
 def test_sssctl__analyze_tevent_id(client: Client, ldap: LDAP):
@@ -1075,7 +1042,6 @@ def test_sssctl__analyze_tevent_id(client: Client, ldap: LDAP):
     assert "user1@test" in result.stdout, "user1@test was not found in the output"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=2013260)
 @pytest.mark.topology(KnownTopology.LDAP)
 def test_sssctl__analyze_child_logs(client: Client, ldap: LDAP):
@@ -1125,7 +1091,6 @@ def test_sssctl__analyze_child_logs(client: Client, ldap: LDAP):
     ), "'Authentication failure to the client' was not found"
 
 
-@pytest.mark.tools
 @pytest.mark.ticket(bz=[2142960, 2142794, 2142961])
 @pytest.mark.topology(KnownTopology.LDAP)
 def test_sssctl__analyze_without_root_privileges(client: Client, ldap: LDAP):

@@ -14,7 +14,6 @@ from sssd_test_framework.topology import KnownTopology, KnownTopologyGroup
 
 
 @pytest.mark.importance("high")
-@pytest.mark.schema
 @pytest.mark.ticket(gh=4153, bz=1362023)
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
 @pytest.mark.parametrize("attrs", ["mail, firstname:givenname, lastname:sn", "given_email:mail"])

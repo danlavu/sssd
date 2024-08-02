@@ -17,7 +17,6 @@ from sssd_test_framework.topology import KnownTopology
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.authentication
 @pytest.mark.topology(KnownTopology.Client)
 @pytest.mark.parametrize("ccache_storage", ["memory", "secdb"])
 def test_kcm__kinit_does_not_create_new_ccache(client: Client, kdc: KDC, ccache_storage: str):
@@ -65,7 +64,6 @@ def test_kcm__kinit_does_not_create_new_ccache(client: Client, kdc: KDC, ccache_
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.authentication
 @pytest.mark.topology(KnownTopology.Client)
 @pytest.mark.parametrize("ccache_storage", ["memory", "secdb"])
 def test_kcm__ccache_holds_multiple_and_all_types_of_principals(client: Client, kdc: KDC, ccache_storage: str):
@@ -158,7 +156,6 @@ def test_kcm__ccache_holds_multiple_and_all_types_of_principals(client: Client, 
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.authentication
 @pytest.mark.topology(KnownTopology.Client)
 @pytest.mark.parametrize("ccache_storage", ["memory", "secdb"])
 def test_kcm__kswitch_between_primary_ccaches(client: Client, kdc: KDC, ccache_storage: str):
@@ -234,7 +231,6 @@ def test_kcm__kswitch_between_primary_ccaches(client: Client, kdc: KDC, ccache_s
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.authentication
 @pytest.mark.topology(KnownTopology.Client)
 @pytest.mark.parametrize("ccache_storage", ["memory", "secdb"])
 def test_kcm__subsidiary_ccaches_are_used_by_the_kcm(client: Client, kdc: KDC, ccache_storage: str):
@@ -315,7 +311,6 @@ def test_kcm__subsidiary_ccaches_are_used_by_the_kcm(client: Client, kdc: KDC, c
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.authentication
 @pytest.mark.topology(KnownTopology.Client)
 @pytest.mark.parametrize("ccache_storage", ["memory", "secdb"])
 def test_kcm__kdestroy_nocache_throws_no_error(client: Client, kdc: KDC, ccache_storage: str):
@@ -351,7 +346,6 @@ def test_kcm__kdestroy_nocache_throws_no_error(client: Client, kdc: KDC, ccache_
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.authentication
 @pytest.mark.topology(KnownTopology.Client)
 def test_kcm__tgt_renewal_updates_ticket_as_configured(client: Client, kdc: KDC):
     """

@@ -499,7 +499,6 @@ def test_identity__lookup_users_fully_qualified_name_and_case_insensitive(client
 
 
 @pytest.mark.importance("critical")
-@pytest.mark.authentication
 @pytest.mark.topology(KnownTopologyGroup.AnyAD)
 def test_identity__lookup_idmapping_of_posix_and_non_posix_user_and_group(client: Client, provider: GenericADProvider):
     """
