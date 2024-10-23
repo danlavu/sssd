@@ -16,6 +16,18 @@ from sssd_test_framework.roles.ldap import LDAP
 from sssd_test_framework.topology import KnownTopology, KnownTopologyGroup
 
 
+@pytest.mark.importance("medium")
+def test_identity_lookup_users_with_enumeration_enabled():
+    """ :TODO: """
+
+
+@pytest.mark.importance("medium")
+def test_identity_lookup_groups_with_enumeration_enabled():
+    """ :TODO: """
+    
+
+
+
 @pytest.mark.importance("critical")
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
 @pytest.mark.parametrize("sssd_service_user", ("root", "sssd"))

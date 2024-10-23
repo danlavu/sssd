@@ -12,6 +12,15 @@ from sssd_test_framework.roles.generic import GenericProvider
 from sssd_test_framework.roles.ldap import LDAP
 from sssd_test_framework.topology import KnownTopology, KnownTopologyGroup
 
+"""
+:TODO:
+* parametrize these tests so they are easier to maintain
+
+:Questions:
+* There is no benefit to testing these against all providers?
+** We can reduce the overhead to use a single provider
+"""
+
 
 @pytest.mark.importance("critical")
 @pytest.mark.cache

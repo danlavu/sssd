@@ -16,6 +16,20 @@ from sssd_test_framework.roles.samba import Samba
 from sssd_test_framework.topology import KnownTopologyGroup
 
 
+@pytest.mark.importance("critical")
+def test_failover__primary_server_is_offline_user_logins():
+    """
+    :TODO:
+    * similar to test_failover__reactivation_timeout_is_honored user logs in
+    * ensure the login is not using the cache
+    :title:
+    :setup:
+    :steps:
+    :expectedresults:
+    :customerscenario:
+    """
+
+
 @pytest.mark.parametrize("value, expected", [(None, 31), (15, 31), (60, 60)])
 @pytest.mark.importance("low")
 @pytest.mark.ticket(gh=7375, jira="RHEL-17659")

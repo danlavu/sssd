@@ -13,6 +13,50 @@ from sssd_test_framework.roles.generic import GenericProvider
 from sssd_test_framework.topology import KnownTopology, KnownTopologyGroup
 
 
+@pytest.mark.topology(KnownTopology.AnyProvider)
+@pytest.mark.importance("critical")
+def test_authentication__user_is_forced_to_change_expired_password():
+    """ TODO: """
+
+
+@pytest.mark.topology(KnownTopology.AnyProvider)
+@pytest.mark.importance("critical")
+def test_authentication__user_is_locked_after_failed_login_attempts():
+    """ TODO: add functionality to set failed login attempts for provider roles i.e. provider.policy(lockout = n) """
+
+
+@pytest.mark.topology(KnownTopology.AnyProvider)
+@pytest.mark.importance("critical")
+def test_authentication__user_password_meets_complexity_requirements():
+    """ TODO: add functionality to set the password policy i.e. provider.policy(complex=True | None = False) """
+
+
+@pytest.mark.topology(KnownTopology.AnyProvider)
+@pytest.mark.importance("high")
+def test_authentication__user_can_login_using_ssh_keys_stored_in_the_directory():
+    """ TODO: add functionality to authentication, i.e. client.auth.ssh.key("$key_path") """
+
+
+@pytest.mark.topology(KnownTopology.AnyProvider)
+@pytest.mark.importance("medium")
+def test_authentication__with_a_different_auth_provider():
+    """ TODO: create sssd.common.config with id using local users and krb for auth """
+    
+
+@pytest.mark.topology(KnownTopology.AnyProvider)
+@pytest.mark.importance("high")
+def test_authentication__multiple_sssd_domains_are_configured():
+    """ TODO: create sssd.common.config with two domains """
+    # i.e. ad.test and ipa.test, both user@ad.test and user@ipa.test work
+
+
+@pytest.mark.topology(KnownTopology.AnyProvider)
+@pytest.mark.parametrize("username", [("user", True), ("user%", False), ("user_", False)])
+@pytest.mark.importance("low")
+def test_authentication__valid_and_invalid_usernames(username: str):
+    """ TODO: username combinations work as expected, case-sensitive checking """
+
+
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
 @pytest.mark.parametrize("method", ["su", "ssh"])
 @pytest.mark.parametrize("sssd_service_user", ("root", "sssd"))

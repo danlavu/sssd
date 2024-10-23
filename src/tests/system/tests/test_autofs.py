@@ -13,6 +13,14 @@ from sssd_test_framework.roles.nfs import NFS
 from sssd_test_framework.topology import KnownTopologyGroup
 
 
+"""
+TODO:
+
+* expand these tests to create files, directories and assert ownership?
+* extend samba and ad role and create cifs share 
+"""
+
+
 @pytest.mark.importance("critical")
 @pytest.mark.ticket(gh=6739)
 @pytest.mark.parametrize("cache_first", [False, True])
