@@ -388,7 +388,9 @@ def test_kcm__tgt_renewal_updates_ticket_as_configured(client: Client, kdc: KDC)
             time.sleep(2)
             (renew_start, _) = krb.list_tgt_times(kdc.realm)
 
-            assert init_start < renew_start, "Initial renewal times exceeds renewal interval!"
+            assert (
+                init_start < renew_start
+            ), "The renewed timestamp is not greater than the initial ticket timestamp!"
 
 
 @pytest.mark.topology(KnownTopology.Client)
