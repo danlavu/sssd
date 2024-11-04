@@ -13,6 +13,96 @@ from sssd_test_framework.roles.generic import GenericProvider
 from sssd_test_framework.topology import KnownTopology, KnownTopologyGroup
 
 
+@pytest.mark.importance("critical")
+def test_authentication__password_change():
+    # test_ldap__password_change_using_ppolicy covers LDAP
+    pass
+
+
+@pytest.mark.importance("critical")
+def test_authentication__password_change_new_passwords_do_not_match():
+    # test_ldap__password_change_new_passwords_do_not_match_using_ppolicy covers LDAP
+    pass
+
+
+@pytest.mark.importance("critical")
+def test_authentication__user_is_locked_after_failed_login_attempts():
+    # framework, add functionality to set failed login attempts for provider roles i.e. provider.policy(lockout = n)
+    pass
+
+
+@pytest.mark.importance("critical")
+def test_authentication__user_password_meets_complexity_requirements():
+    # framework, add functionality to set the password policy i.e. provider.policy(complex=True | None = False)
+    pass
+
+
+@pytest.mark.parametrize(
+    "home_key",
+    ["user", "uid", "fqn", "domain", "first_char", "upn", "default", "lowercase", "substring", "literal%"],
+)
+@pytest.mark.importance("medium")
+def test_authentication__with_overriding_home_directory(home_key: str):
+    """
+    :title: Override the user's home directory
+    :description:
+        For simplicity, the home directory is set to '/home/user1' because some providers homedirs are different.
+    :setup:
+        1. Create user and set home directory to '/home/user1'
+        2. Configure SSSD with 'override_homedir' home_key value and restart SSSD
+        3. Get entry for 'user1'
+    :steps:
+        1. Login as 'user1' and check working directory
+    :expectedresults:
+        1. Login is successful and working directory matches the expected value
+    :customerscenario: False
+    """
+    pass
+
+
+@pytest.mark.parametrize("config", [
+    ["default_shell", "/bin/bash"],
+    ["shell_fallback", "/bin/zsh"],
+    ["vetoed_shell", "/bin/bash"],
+    ["shell_fallback", "/bin/bash"]
+])
+@pytest.mark.importance("low")
+def test_authentication__homedir_and_shell_parameters(config: list[str]):
+    pass
+
+
+def test_authentication__user_can_login_using_ssh_keys_stored_in_the_directory():
+    # add functionality to authentication, i.e. client.auth.ssh.key("$key_path")
+    # generic provider may require some framework changes, ipa provider is ready now
+    pass
+
+
+def test_authentication__different_auth_provider():
+    # create sssd.common.config with id using local users and krb for auth
+    pass
+
+
+def test_authentication__multiple_domains():
+    # create sssd.common.config with two domains
+    # i.e. ad.test and ipa.test, both user@ad.test and user@ipa.test work
+    pass
+
+
+@pytest.mark.parametrize("username", [
+    ("user123", True),
+    ("user%123", False),
+    ("user_123", True),
+    ("user\\123", True),
+    ("user-123", True),
+    ("user!123", False)
+    # Not the entire list
+])
+def test_authentication__valid_and_invalid_usernames(username: str):
+    # all character combinations work as expected, case-sensitive checking
+    # includes intg/test_ldap.py - tset_regression_ticket2163 , "user\\123"
+    pass
+
+
 @pytest.mark.topology(KnownTopologyGroup.AnyProvider)
 @pytest.mark.parametrize("method", ["su", "ssh"])
 @pytest.mark.parametrize("sssd_service_user", ("root", "sssd"))
