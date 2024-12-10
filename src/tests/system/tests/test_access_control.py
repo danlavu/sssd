@@ -53,7 +53,7 @@ test_001_simple_allow_user_to_user1 -> test_access_control.py
 notes
 =====
 * parametrize the search attributes, allowing ad and ldap filters be one test
-* parametrize fully qualified names 
+* parametrize fully qualified names
 """
 
 

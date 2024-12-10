@@ -28,7 +28,7 @@ b:blocked
 notes
 =====
 * single provider, no value testing against multiple providers
-* this can be parametrized, I think it'll be easier to parametrized the service, because the assertions for users and groups are so different. 
+* this can be parametrized, I think it'll be easier to parametrized the service, because the assertions for users and groups are so different.
 * is it important to invalidate a user and then users? and a group and groups?
 
 
