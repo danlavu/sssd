@@ -49,7 +49,7 @@ DNS(BaseObject[ADHost, AD])
 
 # in our existing tests we had to disable forwarders in AD otherwise the internal rh corp ptr record would resolve
   role.ad.dns.zone(name: str | None = domain, secure_updates: bool | None = True)
-DNS over TLS (DoT)  
+DNS over TLS (DoT)
 Certificates for client
 SSSD Client configuration?
 
@@ -57,15 +57,15 @@ update containers to support dot, SSSD_container repo (jakub)
 * client (networkManager)
 * new ipa topologycontroller with dot enabled, sssd configured client
 
-eDNS in RHEL (anaconda,..., installer, dnsconfd... ), /etc/edns/trust (custom trust store) due to UKI issues...  
-- - eDNS in RHEL IdM (SSSD and IPA), 
+eDNS in RHEL (anaconda,..., installer, dnsconfd... ), /etc/edns/trust (custom trust store) due to UKI issues...
+- - eDNS in RHEL IdM (SSSD and IPA),
 https://github.com/freeipa/freeipa/pull/7343/commits
 
 
 https://github.com/freeipa/freeipa/pull/7343/commits/5abccbf9f4169b2379fccda8677700ae28c1b4c8
 - test_edns (deploying freeipa with DoT enable, and supports Server, replicas, and clients)
 
-https://github.com/SSSD/sssd/pull/7678 ---dot support in sssd 
+https://github.com/SSSD/sssd/pull/7678 ---dot support in sssd
 dyndns_dot_cacert
 dyndns_dot_cert
 """

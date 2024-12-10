@@ -27,7 +27,7 @@ b:blocked
 notes
 =====
 * I think we should drop most of these tests except the ones that checks the data that is extracted from /etc/passwd, homedir, gecos
-* Dropping the modifying value entry tests, cache tests, override tests 
+* Dropping the modifying value entry tests, cache tests, override tests
 
 intg
 ====

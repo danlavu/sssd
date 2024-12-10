@@ -24,7 +24,7 @@ b:blocked
 discussions
 ===========
 ?:expand these tests to create files, directories and assert ownership
-?:extend samba and ad role and create cifs share 
+?:extend samba and ad role and create cifs share
 
 intg
 ====
