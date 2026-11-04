@@ -255,30 +255,62 @@ class DirSrv(object):
         else:
             self.multihost.log.info('DS instance started successfully')
 
+    def _add_aci(self, ldap_obj, aci, label):
+        """MOD_ADD an ACI, ignoring TYPE_OR_VALUE_EXISTS (already present)."""
+        add_aci = [(ldap.MOD_ADD, 'aci', [aci.encode('utf-8')])]
+        (ret, return_value) = ldap_obj.modify_ldap(self.dsinstance_suffix,
+                                                   add_aci)
+        if not return_value:
+            if isinstance(ret, ldap.TYPE_OR_VALUE_EXISTS):
+                print("%s ACI already present on %s" %
+                      (label, self.dsinstance_suffix))
+            else:
+                raise LdapException("Failed to add %s aci: %s" % (label, ret))
+        else:
+            print("Enabled %s aci on %s" % (label, self.dsinstance_suffix))
+
     def enable_anonymous_search(self, binduri):
-        """Enable anonymous search access to basedn
+        """Enable anonymous search access to basedn.
+
+        Mirrors sssd-test-framework LDAP.setup() for 389-DS 2.x+:
+          1. Set nsslapd-allow-anonymous-access=on in cn=config
+             (defaults to 'off' since 389-DS 2.x).
+          2. Add the anonymous read/search/compare ACI on the naming
+             context (ignore if sample_entries already added it).
+          3. Add the self userPassword ACI so users can change their
+             own passwords.
+
         Args:
             binduri (str): LDAP uri to bind with
         Returns:
-            boold: True if ACI is added
+            bool: True if anonymous access is enabled
         Exceptions:
             LdapException
         """
         ldap_obj = LdapOperations(uri=binduri, binddn=self.dsrootdn,
                                   bindpw=self.dsrootdn_pwd)
-        # Enable Anonymous access aci
+
+        # Step 1: enable the global anonymous-access gate (389-DS 2.x fix).
+        enable_anon = [(ldap.MOD_REPLACE, 'nsslapd-allow-anonymous-access',
+                        [b'on'])]
+        (ret, return_value) = ldap_obj.modify_ldap('cn=config', enable_anon)
+        if not return_value:
+            raise LdapException(
+                "Failed to set nsslapd-allow-anonymous-access: %s" % ret)
+        else:
+            print("Set nsslapd-allow-anonymous-access=on in cn=config")
+
+        # Step 2: anonymous read/search/compare ACI on the naming context.
         allow_anonymous = "(targetattr!=\"userPassword || aci\")" \
                           "(version 3.0; acl \"Enable anonymous access\";" \
                           "allow (read, search, compare)" \
                           "userdn=\"ldap:///anyone\";)"
-        add_aci = [(ldap.MOD_ADD, 'aci', [allow_anonymous.encode('utf-8')])]
-        (ret, return_value) = ldap_obj.modify_ldap(self.dsinstance_suffix,
-                                                   add_aci)
-        if not return_value:
-            raise LdapException("Failed to enable anonymous access aci")
-        else:
-            print("Enabled Anonymous access aci to %s" %
-                  self.dsinstance_suffix)
+        self._add_aci(ldap_obj, allow_anonymous, "Anonymous access")
+
+        # Step 3: allow users to change their own passwords (ldap.py parity).
+        allow_pwp = '(targetattr="userpassword")(version 3.0; ' \
+                    'acl "pwp test"; allow (all) userdn="ldap:///self";)'
+        self._add_aci(ldap_obj, allow_pwp, "Self password")
 
     def enable_ssl(self, binduri, tls_port):
         """sets TLS Port and enabled TLS on Directory Server.
@@ -564,12 +596,15 @@ class DirSrvWrap(object):
             except subprocess.CalledProcessError:
                 raise DirSrvException('Failed to setup Directory server')
             self.dirsrv_info[self.ds_instance_name] = self.dirsrv_obj.__dict__
-            ldap_uri = 'ldap://%s:%r' % (self.ds_connect_host,
-                                         self.ds_ldap_port)
+            # Apply on the DS host. Controller→AWS IP binds fail with errno
+            # 107 after dscreate; loopback can hang if slapd is not listening
+            # on 127.0.0.1. Use the instance FQDN from the host (same pattern
+            # as test_multidomain's dsconf calls).
             try:
-                self.dirsrv_obj.enable_anonymous_search(ldap_uri)
-            except LdapException:
-                raise DirSrvException("Failed to enable anonymous search")
+                self._enable_anonymous_on_host()
+            except DirSrvException as err:
+                raise DirSrvException(
+                    "Failed to enable anonymous search: %s" % err.msg)
             if self.ssl:
                 try:
                     self.dirsrv_obj.setup_certs(self.ssl_dir,
@@ -581,6 +616,79 @@ class DirSrvWrap(object):
             return result, return_code
         else:
             raise DirSrvException('Failed to setup Directory Server instance')
+
+    def _enable_anonymous_on_host(self):
+        """Apply anonymous-access settings on the DS host.
+
+        Uses dsconf for cn=config (supported on current 389-DS) and
+        ldapmodify for ACIs (dsconf has no 'aci' subcommand here). Connect
+        via the instance FQDN from the host — the same URI pattern as
+        test_multidomain — not the controller AWS IP or 127.0.0.1.
+        """
+        uri = 'ldap://%s:%s' % (self.ds_instance_host, self.ds_ldap_port)
+        allow_anonymous = (
+            '(targetattr!="userPassword || aci")'
+            '(version 3.0; acl "Enable anonymous access";'
+            'allow (read, search, compare) userdn="ldap:///anyone";)'
+        )
+        allow_pwp = (
+            '(targetattr="userpassword")(version 3.0; '
+            'acl "pwp test"; allow (all) userdn="ldap:///self";)'
+        )
+
+        result = self.multihost.run_command(
+            ['dsconf',
+             '-D', self.dirsrv_obj.dsrootdn,
+             '-w', self.ds_rootdn_pwd,
+             uri,
+             'config', 'replace',
+             'nsslapd-allow-anonymous-access=on'],
+            raiseonerr=False)
+        if result.returncode != 0:
+            stderr = getattr(result, 'stderr_text', '') or ''
+            stdout = getattr(result, 'stdout_text', '') or ''
+            raise DirSrvException(
+                "Failed to set nsslapd-allow-anonymous-access (rc=%s): %s"
+                % (result.returncode, stderr + stdout))
+        self.multihost.log.info(
+            'Set nsslapd-allow-anonymous-access=on in cn=config')
+
+        ldif_path = '/tmp/ds-anon-access.ldif'
+        bind_args = [
+            'ldapmodify', '-x',
+            '-D', self.dirsrv_obj.dsrootdn,
+            '-w', self.ds_rootdn_pwd,
+            '-H', uri,
+            '-f', ldif_path,
+        ]
+
+        def _add_aci(aci, label):
+            self.multihost.put_file_contents(
+                ldif_path,
+                "dn: %s\n"
+                "changetype: modify\n"
+                "add: aci\n"
+                "aci: %s\n" % (self.ds_instance_suffix, aci))
+            result = self.multihost.run_command(bind_args, raiseonerr=False)
+            if result.returncode == 0:
+                self.multihost.log.info(
+                    'Enabled %s aci on %s'
+                    % (label, self.ds_instance_suffix))
+                return
+            stderr = getattr(result, 'stderr_text', '') or ''
+            stdout = getattr(result, 'stdout_text', '') or ''
+            combined = stderr + stdout
+            if 'Type or value exists' in combined:
+                self.multihost.log.info(
+                    '%s aci already present on %s'
+                    % (label, self.ds_instance_suffix))
+                return
+            raise DirSrvException(
+                "Failed to add %s aci (rc=%s): %s"
+                % (label, result.returncode, combined))
+
+        _add_aci(allow_anonymous, 'anonymous access')
+        _add_aci(allow_pwp, 'self-password')
 
     def enablessl(self):
         """Enable SSL/TLS on instance.

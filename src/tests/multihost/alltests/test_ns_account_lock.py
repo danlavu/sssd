@@ -60,7 +60,7 @@ def unlock_check(multihost, user):
 
 def manage_user_roles(multihost, user, lock, type1):
     """Manage users and roles"""
-    master_e = multihost.master[0].ip
+    master_e = multihost.master[0].sys_hostname
     assert f"Entry {user},ou=people," \
            f"dc=example,dc=test is {lock}" in \
            execute_cmd(multihost, f"dsidm "
@@ -141,7 +141,7 @@ class TestNsAccountLock(object):
         """
         clean_sys(multihost)
         client = sssdTools(multihost.client[0])
-        ldap_uri = f'ldap://{multihost.master[0].ip}'
+        ldap_uri = f'ldap://{multihost.master[0].sys_hostname}'
         ds_rootdn = 'cn=Directory Manager'
         ds_rootpw = 'Secret123'
         manage_user_roles(multihost, "cn=managed", "lock", "role")
@@ -197,7 +197,7 @@ class TestNsAccountLock(object):
         """
         clean_sys(multihost)
         client = sssdTools(multihost.client[0])
-        ldap_uri = f'ldap://{multihost.master[0].ip}'
+        ldap_uri = f'ldap://{multihost.master[0].sys_hostname}'
         ds_rootdn = 'cn=Directory Manager'
         ds_rootpw = 'Secret123'
         ldap_inst = LdapOperations(ldap_uri, ds_rootdn, ds_rootpw)
@@ -253,7 +253,7 @@ class TestNsAccountLock(object):
         """
         clean_sys(multihost)
         client = sssdTools(multihost.client[0])
-        master_e = multihost.master[0].ip
+        master_e = multihost.master[0].sys_hostname
         ldap_uri = f'ldap://{master_e}'
         ds_rootdn = 'cn=Directory Manager'
         ds_rootpw = 'Secret123'
